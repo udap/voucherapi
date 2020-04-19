@@ -1,0 +1,543 @@
+openapi: 3.0.0
+info:
+  title: voucher
+  version: '1.0'
+  description: Voucher APIs
+servers:
+  - url: 'https://voucherapi.chainmind.io'
+paths:
+  /vouchers:
+    get:
+      summary: Query vouchers
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVoucherResponse'
+              examples: {}
+      description: Query vouchers of a user with given status that can be redeemed at the given merchant.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: ownerId
+          description: id of the owner of the returned vouchers
+          required: true
+        - schema:
+            type: string
+            enum:
+              - REDEEMED
+              - ACTIVE
+              - EXPIRED
+              - ALL
+          in: query
+          name: status
+          description: voucher status
+          required: true
+        - schema:
+            type: string
+          in: query
+          name: merchantCode
+          description: Identifier of the merchant where vouchers can be redeemed
+        - schema:
+            type: integer
+            default: '0'
+          in: query
+          name: page
+          description: 'page ordinal number, default to 0'
+        - schema:
+            type: integer
+            default: '20'
+          in: query
+          name: size
+          description: 'max number of vouchers returned from the query, default to 20'
+        - schema:
+            type: string
+            enum:
+              - ID
+              - CELLPHONE
+          in: query
+          name: idType
+          description: 'owner ID type, default to ID'
+        - schema:
+            type: string
+            enum:
+              - ID
+              - LICENSE
+          in: query
+          name: codeType
+          description: merchant code type
+  /redemptions:
+    put:
+      summary: Confirm a redemption
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfirmRedemptionResponse'
+        '404':
+          description: Voucher Not Found or Not Redeemed Yet
+      description: Confirm the success or failure of a previous  redemption
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmRedemptionRequest'
+    post:
+      summary: Create a redemption
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateRedemptionResponse'
+        '404':
+          description: Voucher Not Found
+        '409':
+          description: Voucher Status Conflict
+      description: Create a redemption to redeem a voucher
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRedemptionRequest'
+  /merchants:
+    get:
+      summary: Query merchants
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMerchantResponse'
+      description: Query merchants created after the specified date parameter
+      parameters:
+        - schema:
+            type: string
+            pattern: YYYY-MM-DD
+          in: query
+          name: createdAfter
+          description: a param used to query merchants created after this given date
+          required: true
+  '/merchants/{code}':
+    parameters:
+      - type: string
+        name: code
+        in: path
+        required: true
+        schema:
+          type: string
+        description: code used to uniquely identify a merchant
+    get:
+      summary: Query a merchant by code
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Merchant'
+        '404':
+          description: Not Found
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - ID
+              - LICENSE
+          in: query
+          name: codeType
+          description: code type; default to ID if not present
+      description: Query a merchant given its code and code type
+  '/users/{id}':
+    parameters:
+      - schema:
+          type: string
+        name: id
+        in: path
+        required: true
+        description: used to uniquely identify a user
+    get:
+      summary: Query a user by code
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: Not Found
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - ID
+              - CELLPHONE
+          in: query
+          name: idType
+          description: 'id type, default to ID'
+      description: Query a user by code and code type
+      operationId: ''
+  '/vouchers/{id}':
+    parameters:
+      - type: string
+        name: id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: voucher identifier
+    get:
+      summary: Query a voucher by id
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Voucher'
+      description: Query a voucher given its identifier
+components:
+  schemas:
+    PaginatedVoucherResponse:
+      title: PaginatedVoucherResponse
+      type: object
+      properties:
+        total:
+          type: integer
+          description: total number of pages
+        page:
+          type: integer
+          description: current page
+        size:
+          type: integer
+          description: size of the page
+        entries:
+          description: a list of VoucherListItem
+          type: array
+          items:
+            $ref: '#/components/schemas/VoucherListItem'
+        configs:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoucherConfig'
+      required:
+        - total
+        - page
+        - size
+        - entries
+        - configs
+    VoucherListItem:
+      title: VoucherListItem
+      type: object
+      properties:
+        id:
+          type: string
+          description: voucher identifier
+        issuer:
+          type: string
+          description: the short name of the issuer
+        code:
+          type: string
+          description: voucher code
+        category:
+          type: string
+          description: voucher category
+        effective:
+          type: string
+          format: date
+          description: effective date
+        expiry:
+          type: string
+          format: date
+          description: expiry date
+        config:
+          type: string
+      required:
+        - id
+        - issuer
+        - code
+        - effective
+        - expiry
+    VoucherConfig:
+      title: VoucherConfig
+      type: object
+      properties:
+        name:
+          type: string
+          description: voucher name
+        description:
+          type: string
+          description: description such as redemption instructions or anything you want to the customer to read
+        authorizationRequired:
+          type: boolean
+          description: does the voucher require additional authorization for redemption
+        discount:
+          $ref: '#/components/schemas/Discount'
+        coverImg:
+          type: string
+          description: voucher cover image in Base64
+      required:
+        - name
+        - discount
+    Discount:
+      title: Discount
+      type: object
+      properties:
+        type:
+          type: string
+          description: discount type
+          enum:
+            - AMOUNT
+            - PERCENT
+        discountOff:
+          type: integer
+          description: 'amount off in cents (e.g, 2000 represent 20 RMB off the original price) or percentage off (e.g, 20 represents 20% off the original price)'
+      required:
+        - type
+        - discountOff
+    CreateRedemptionRequest:
+      title: CreateRedemptionRequest
+      type: object
+      properties:
+        voucherId:
+          type: string
+          description: identifier of the voucher to be redeemed
+        reqUser:
+          type: string
+          description: the user that redeems the voucher
+        merchantId:
+          type: string
+          description: identifier of the merchant that executes the redemption
+        orderId:
+          type: string
+          description: identifier of the order that the voucher is applied to
+      required:
+        - voucherId
+        - reqUser
+        - merchantId
+        - orderId
+    ConfirmRedemptionRequest:
+      title: ConfirmRedemptionRequest
+      type: object
+      properties:
+        voucherId:
+          type: string
+          description: identifier of the voucher that was redeemed
+        merchantId:
+          type: string
+          description: identifier of the merchant that accepted the voucher
+        orderId:
+          type: string
+          description: order that the redemption was applied to
+        status:
+          type: string
+          description: redemption status
+          enum:
+            - SUCCESS
+            - FAILED
+      required:
+        - voucherId
+        - merchantId
+        - orderId
+        - status
+    CreateRedemptionResponse:
+      title: CreateRedemptionResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: redemption id
+        createdAt:
+          type: string
+          format: date-time
+          description: the timestamp that this redemption was created
+        createdBy:
+          type: string
+          description: the user who executed the redemption
+        status:
+          type: string
+          description: the status of the redemption
+          enum:
+            - PENDING
+            - SUCCESS
+            - FAILED
+      required:
+        - id
+        - createdAt
+        - createdBy
+        - status
+    ConfirmRedemptionResponse:
+      title: ConfirmRedemptionResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: the redemption id
+        voucherId:
+          type: string
+          description: the voucher that was redeemed
+        status:
+          type: string
+          description: redemption status
+          enum:
+            - SUCCESS
+            - FAILED
+      required:
+        - id
+        - voucherId
+        - status
+    MerchantListItem:
+      title: PaginatedMerchantResponse
+      type: object
+      properties:
+        id:
+          type: string
+          description: merchant identifier
+        name:
+          type: string
+          description: merchant full name
+        shortName:
+          type: string
+          description: merchant short name
+        licenseNo:
+          type: string
+          description: business license number of the merchant
+        code:
+          type: string
+          description: organization code
+      required:
+        - id
+        - name
+        - licenseNo
+    PaginatedMerchantResponse:
+      title: PaginatedMerchantResponse
+      type: object
+      properties:
+        total:
+          type: integer
+          description: total number of pages
+        page:
+          type: integer
+          description: current page
+        size:
+          type: integer
+          description: page size
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantListItem'
+      required:
+        - total
+        - page
+        - size
+    Merchant:
+      title: Merchant
+      type: object
+      properties:
+        id:
+          type: string
+          description: merchant identifier
+        name:
+          type: string
+          description: name of the merchant
+        shortName:
+          type: string
+          description: short name of the merchant
+        code:
+          type: string
+          description: code of the merchant
+        licenseNo:
+          type: string
+          description: business license number
+        phone:
+          type: string
+          description: contact phone number
+        streetAddress:
+          type: string
+          description: street address
+        district:
+          type: string
+          description: district
+        city:
+          type: string
+          description: city
+        province:
+          type: string
+          description: province
+        postalCode:
+          type: string
+          description: postal code
+      required:
+        - id
+        - name
+        - licenseNo
+        - phone
+        - streetAddress
+        - city
+        - province
+    User:
+      title: User
+      type: object
+      properties:
+        id:
+          type: string
+          description: user identifier
+        cellphone:
+          type: string
+          description: "user's cellphone number"
+      required:
+        - id
+        - cellphone
+    Voucher:
+      title: Voucher
+      type: object
+      properties:
+        id:
+          type: string
+          description: voucher identifier
+        issuer:
+          type: string
+          description: the issuer id
+        code:
+          type: string
+          description: voucher code
+        category:
+          type: string
+          description: voucher category
+        effective:
+          type: string
+          description: voucher effective date
+          format: date
+        expiry:
+          type: string
+          description: voucher expiry date
+          format: date
+        config:
+          $ref: '#/components/schemas/VoucherConfig'
+        status:
+          type: string
+          description: voucher status
+          enum:
+            - REDEEMED
+            - ACTIVE
+            - EXPIRED
+      required:
+        - id
+        - issuer
+        - code
+        - effective
+        - expiry
+        - status
