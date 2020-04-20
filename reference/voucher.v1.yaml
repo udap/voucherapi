@@ -393,6 +393,16 @@ components:
     ConfirmRedemptionRequest:
       title: ConfirmRedemptionRequest
       type: object
+      x-examples:
+        example-1:
+          value:
+            voucherId: ffed7134-797a-4d87-a58c-a8de6a5c212e
+            merchantCode: 91310000MA1GUUWC0X
+            codeType: LICENSE
+            orderId: '9001000001'
+            status: SUCCESS
+      x-tags:
+        - Redemption
       properties:
         voucherId:
           type: string
@@ -416,21 +426,12 @@ components:
           enum:
             - ID
             - LICENSE
+            - YCODE
       required:
         - voucherId
         - merchantCode
         - orderId
         - status
-      x-examples:
-        example-1:
-          value:
-            voucherId: ffed7134-797a-4d87-a58c-a8de6a5c212e
-            merchantCode: 91310000MA1GUUWC0X
-            codeType: LICENSE
-            orderId: '9001000001'
-            status: SUCCESS
-      x-tags:
-        - Redemption
     CreateRedemptionResponse:
       title: CreateRedemptionResponse
       type: object
