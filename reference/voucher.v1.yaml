@@ -23,11 +23,44 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedVoucherResponse'
-              examples: {}
+              examples:
+                example-1:
+                  value:
+                    total: 1
+                    page: 0
+                    size: 20
+                    entries:
+                      - id: 4a29e8b8-fd53-42b7-8df5-5fb663fe1370
+                        code: '13455914'
+                        effective: '2020-05-01'
+                        expiry: '2020-06-01'
+                        status: ACTIVE
+                        merchantCount: 1
+                        config:
+                          type: COUPON
+                          description: 'anything about the voucher, e.g., redemption instructions'
+                          redemption: 1
+                          discount:
+                            type: AMOUNT
+                            valueOff: 500
+                      - id: 2bf8ff3f-96a3-4a19-9ad7-9d308b8ada11
+                        code: '59348865'
+                        effective: '2020-05-01'
+                        expiry: '2020-06-01'
+                        status: ACTIVE
+                        merchantCount: 5
+                        config:
+                          type: COUPON
+                          description: 'anything about the voucher, e.g., redemption instructions'
+                          redemption: 1
+                          discount:
+                            type: AMOUNT
+                            valueOff: 500
       description: Query vouchers of a user with given status that can be redeemed at the given merchant or any merchant.
       parameters:
         - schema:
             type: string
+            enum: []
           in: query
           name: ownerId
           description: id of the owner of the returned vouchers
@@ -38,11 +71,10 @@ paths:
               - REDEEMED
               - ACTIVE
               - EXPIRED
-              - ALL
+              - PENDING
           in: query
           name: status
           description: voucher status
-          required: true
         - schema:
             type: string
           in: query
@@ -73,7 +105,7 @@ paths:
             enum:
               - ID
               - LICENSE
-              - YCODE
+              - UPCODE
           in: query
           name: codeType
           description: 'merchant code type, default to ID'
@@ -229,13 +261,59 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Voucher'
+              examples:
+                example-1:
+                  value:
+                    id: 4a29e8b8-fd53-42b7-8df5-5fb663fe1370
+                    issuer: 重庆农商行
+                    code: '13455914'
+                    effective: '2020-05-01'
+                    expiry: '2020-06-01'
+                    status: ACTIVE
+                    redeemedQuantity: 0
+                    config:
+                      type: COUPON
+                      description: 'anything about the voucher, e.g., redemption instructions'
+                      redemption: 1
+                      discount:
+                        type: AMOUNT
+                        valueOff: 500
+        '404':
+          description: Voucher Not Found
       description: Query a voucher given its identifier
       operationId: get-voucher-by-id
+  /vouchers/batchTransfer:
+    post:
+      summary: Batch Transfer Vouchers
+      operationId: post-vouchers-batchTransfer
+      responses:
+        '200':
+          description: OK
+      description: Batch transfer vouchers
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchTransferRequest'
+            examples:
+              example-1:
+                value:
+                  campaignId: 6e697b7a-0a42-400a-9e33-06f7dec94934
+                  reqUser: '121263'
+                  entries:
+                    - fromOwner: '121263'
+                      toOwner: '1722'
+                      amount: 100
+                    - fromOwner: '121263'
+                      toOwner: '917'
+                      amount: 50
 components:
   schemas:
     PaginatedVoucherResponse:
       title: PaginatedVoucherResponse
       type: object
+      x-tags:
+        - Voucher
       properties:
         total:
           type: integer
@@ -251,18 +329,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/VoucherListItem'
-        configs:
-          type: array
-          items:
-            $ref: '#/components/schemas/VoucherConfig'
       required:
         - total
         - page
         - size
         - entries
-        - configs
-      x-tags:
-        - Voucher
     VoucherListItem:
       title: VoucherListItem
       type: object
@@ -270,9 +341,6 @@ components:
         id:
           type: string
           description: voucher identifier
-        issuer:
-          type: string
-          description: the short name of the issuer
         code:
           type: string
           description: voucher code
@@ -287,21 +355,39 @@ components:
           type: string
           format: date
           description: expiry date
-        config:
+        status:
           type: string
+          description: voucher status
+          enum:
+            - REDEEMED
+            - ACTIVE
+            - EXPIRED
+            - PENDING
+        config:
+          $ref: '#/components/schemas/VoucherConfig'
+        campaign:
+          $ref: '#/components/schemas/Campaign'
+        merchantCount:
+          type: integer
+          description: number of merchants where the voucher can be redeemed
       required:
         - id
-        - issuer
         - code
         - effective
         - expiry
+        - status
+        - config
+        - merchantCount
     VoucherConfig:
       title: VoucherConfig
       type: object
+      x-tags:
+        - Voucher
+      description: Voucher configuraiton. A voucher config is usually shared by a set of vouchers of a voucher campaign.
       properties:
-        name:
+        code:
           type: string
-          description: voucher name
+          description: code for fixed voucher
         description:
           type: string
           description: description such as redemption instructions or anything you want to the customer to read
@@ -312,12 +398,20 @@ components:
           $ref: '#/components/schemas/Discount'
         coverImg:
           type: string
-          description: voucher cover image in Base64
+          description: voucher cover image url
+        type:
+          type: string
+          description: 'voucher type, e.g. COUPON'
+          enum:
+            - COUPON
+        redemption:
+          type: integer
+          default: 1
+          description: maximum redemptions
       required:
-        - name
         - discount
-      x-tags:
-        - Voucher
+        - type
+        - redemption
     Discount:
       title: Discount
       type: object
@@ -340,6 +434,9 @@ components:
         valueOff:
           type: integer
           description: 'amount off in cents (e.g, 2000 represent 20 RMB off the original price) or percentage off (e.g, 20 represents 20% off the original price)'
+        amountLimit:
+          type: integer
+          description: maximum discount amount in cent when type is PERCENT
       required:
         - type
         - valueOff
@@ -485,6 +582,8 @@ components:
     MerchantListItem:
       title: PaginatedMerchantResponse
       type: object
+      x-tags:
+        - Merchant
       properties:
         id:
           type: string
@@ -495,18 +594,15 @@ components:
         shortName:
           type: string
           description: merchant short name
-        licenseNo:
+        address:
           type: string
-          description: business license number of the merchant
-        code:
+          description: address of the merchant
+        phone:
           type: string
-          description: organization code
+          description: contact phone
       required:
         - id
         - name
-        - licenseNo
-      x-tags:
-        - Merchant
     PaginatedMerchantResponse:
       title: PaginatedMerchantResponse
       type: object
@@ -595,6 +691,8 @@ components:
     Voucher:
       title: Voucher
       type: object
+      x-tags:
+        - Voucher
       properties:
         id:
           type: string
@@ -616,8 +714,6 @@ components:
           type: string
           description: voucher expiry date
           format: date
-        config:
-          $ref: '#/components/schemas/VoucherConfig'
         status:
           type: string
           description: voucher status
@@ -625,6 +721,18 @@ components:
             - REDEEMED
             - ACTIVE
             - EXPIRED
+            - PENDING
+        redeemedQuantity:
+          type: integer
+          description: redeemed count
+        config:
+          $ref: '#/components/schemas/VoucherConfig'
+        campaign:
+          $ref: '#/components/schemas/Campaign'
+        merchants:
+          type: array
+          items:
+            $ref: '#/components/schemas/MerchantListItem'
       required:
         - id
         - issuer
@@ -632,5 +740,55 @@ components:
         - effective
         - expiry
         - status
-      x-tags:
-        - Voucher
+        - redeemedQuantity
+        - config
+    Campaign:
+      title: Campaign
+      type: object
+      properties:
+        id:
+          type: string
+          description: campaign id
+        name:
+          type: string
+          description: campaign name
+      required:
+        - id
+        - name
+    TransferDestination:
+      title: TransferDestination
+      type: object
+      description: Transfer destination of a batch transfer operation
+      properties:
+        fromOwner:
+          type: string
+        toOwner:
+          type: string
+        amount:
+          type: integer
+          minimum: 1
+      required:
+        - fromOwner
+        - toOwner
+        - amount
+    BatchTransferRequest:
+      title: BatchTransferRequest
+      type: object
+      description: Batch transfer request
+      properties:
+        campaignId:
+          type: string
+          description: campaign id
+        reqUser:
+          type: string
+          description: request user id
+        entries:
+          type: array
+          description: transfer definitions
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/TransferDef'
+      required:
+        - campaignId
+        - reqUser
+        - entries
