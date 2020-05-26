@@ -60,7 +60,6 @@ paths:
       parameters:
         - schema:
             type: string
-            enum: []
           in: query
           name: ownerId
           description: id of the owner of the returned vouchers
@@ -787,7 +786,7 @@ components:
           description: transfer definitions
           minItems: 1
           items:
-            $ref: '#/components/schemas/TransferDef'
+            $ref: '#/components/schemas/TransferDestination'
       required:
         - campaignId
         - reqUser
