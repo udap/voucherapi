@@ -384,9 +384,9 @@ components:
         - Voucher
       description: Voucher configuraiton. A voucher config is usually shared by a set of vouchers of a voucher campaign.
       properties:
-        code:
+        name:
           type: string
-          description: code for fixed voucher
+          description: voucher name
         description:
           type: string
           description: description such as redemption instructions or anything you want to the customer to read
@@ -408,6 +408,7 @@ components:
           default: 1
           description: maximum redemptions
       required:
+        - name
         - discount
         - type
         - redemption
