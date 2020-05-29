@@ -108,6 +108,13 @@ paths:
           in: query
           name: codeType
           description: 'merchant code type, default to ID'
+        - schema:
+            type: string
+            default: id
+            example: 'sort=status&sort=expiry,desc'
+          in: query
+          name: sort
+          description: sort the resultset by given cols
       operationId: get-vouchers
   /redemptions:
     put:
@@ -792,3 +799,43 @@ components:
         - campaignId
         - reqUser
         - entries
+    Order:
+      title: Order
+      type: object
+      properties:
+        id:
+          type: string
+          description: order id
+        amount:
+          type: integer
+          description: order total amount in cent
+        quantity:
+          type: integer
+          description: total number of order items
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+      required:
+        - id
+    OrderItem:
+      title: OrderItem
+      type: object
+      properties:
+        sku:
+          type: string
+          description: SKU
+        product:
+          type: string
+          description: 'product name, e.g., iPhone X 128M'
+        category:
+          type: string
+          description: 'category of product, e.g., Electronics'
+        quantity:
+          type: integer
+          description: number of products in this line item
+        price:
+          type: integer
+          description: product price in cent
+      required:
+        - sku
